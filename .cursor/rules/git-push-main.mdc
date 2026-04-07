@@ -1,0 +1,17 @@
+---
+description: Tras cambios en el repo, commit y push a main
+alwaysApply: true
+---
+
+# Push a `main` al terminar
+
+Cuando modifiques código en este proyecto y la tarea quede lista:
+
+1. Haz **commit** con un mensaje claro en español o inglés.
+2. Haz **push** a la rama remota `main`.
+
+Si el worktree está en **detached HEAD** (sin rama local `main` en checkout), usa:
+
+`git push origin HEAD:main`
+
+No cierres la tarea dejando cambios sin subir salvo que el usuario pida explícitamente no hacer push.

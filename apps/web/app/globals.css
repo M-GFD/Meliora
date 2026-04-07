@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-meliora-paper text-meliora-ink antialiased;
+}
+
+a {
+  @apply text-meliora-accent underline-offset-4 hover:underline;
+}
