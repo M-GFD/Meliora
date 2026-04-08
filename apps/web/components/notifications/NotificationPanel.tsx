@@ -2,7 +2,9 @@
 
 import { useSession } from "next-auth/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { apiFetch } from "@/lib/api";
+import { getSocket } from "@/lib/socket";
 
 type NotificationItem = {
   id: string;
@@ -15,6 +17,18 @@ type NotificationItem = {
 export function NotificationPanel() {
   const { data: session } = useSession();
   const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const socket = getSocket(session?.accessToken ?? null);
+    if (!socket) return;
+    const onNew = () => {
+      void queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    };
+    socket.on("notification:new", onNew);
+    return () => {
+      socket.off("notification:new", onNew);
+    };
+  }, [queryClient, session?.accessToken]);
 
   const query = useQuery({
     queryKey: ["notifications"],

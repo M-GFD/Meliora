@@ -8,6 +8,16 @@ export async function listForUser(userId: string) {
   });
 }
 
+export async function create(userId: string, title: string, body: string) {
+  return prisma.notification.create({
+    data: {
+      userId,
+      title,
+      body,
+    },
+  });
+}
+
 export async function markRead(userId: string, notificationId: string) {
   const updated = await prisma.notification.updateMany({
     where: { id: notificationId, userId },

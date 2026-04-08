@@ -6,4 +6,5 @@ export type FeedPost = {
   createdAt: string;
   author: PostAuthor;
   topic?: { id: string; name: string } | null;
+  consensusSpace?: { id: string; status: "ACTIVE" | "MATURE" } | null;
 };

@@ -1,19 +1,21 @@
 import { Router } from "express";
-import { StatementIntent, VoteType } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "../lib/prisma.js";
 import type { AuthedRequest } from "../middleware/auth.js";
 import { requireAuth } from "../middleware/auth.js";
+import { rateLimit } from "../middleware/rateLimit.js";
+import { getIo } from "../realtime/io.js";
+import * as notificationService from "../services/notificationService.js";
 
 export const consensusRouter = Router();
 
 const statementSchema = z.object({
   content: z.string().min(1).max(280),
-  intent: z.nativeEnum(StatementIntent),
+  intent: z.enum(["EXPAND_AGREEMENT", "EXPLORE_DISAGREEMENT"]),
 });
 
 const statementVoteSchema = z.object({
-  type: z.nativeEnum(VoteType),
+  type: z.enum(["AGREE", "DISAGREE", "PARTIALLY", "RELEVANT", "IRRELEVANT", "NEW_TO_ME"]),
 });
 
 consensusRouter.get("/", async (_req, res, next) => {
@@ -55,7 +57,11 @@ consensusRouter.get("/:id", async (req, res, next) => {
   }
 });
 
-consensusRouter.post("/:id/statement", requireAuth, async (req: AuthedRequest, res, next) => {
+consensusRouter.post(
+  "/:id/statement",
+  rateLimit({ windowMs: 10_000, max: 15 }),
+  requireAuth,
+  async (req: AuthedRequest, res, next) => {
   try {
     const id = z.string().uuid().safeParse(req.params.id);
     if (!id.success) {
@@ -81,14 +87,42 @@ consensusRouter.post("/:id/statement", requireAuth, async (req: AuthedRequest, r
       },
       include: { author: { select: { id: true, username: true } } },
     });
+
+    const memberships = await prisma.clusterMembership.findMany({
+      where: { clusterId: { in: [space.clusterAId, space.clusterBId] } },
+      select: { userId: true },
+    });
+    const recipients = Array.from(
+      new Set<string>(memberships.map((m: { userId: string }) => m.userId)),
+    ).filter(
+      (userId) => userId !== req.userId,
+    );
+    const io = getIo();
+    await Promise.all(
+      recipients.slice(0, 30).map(async (userId) => {
+        const n = await notificationService.create(
+          userId,
+          "Nuevo enunciado en un espacio de consenso",
+          "Alguien propuso un enunciado votable en un espacio donde participas.",
+        );
+        io?.to(`user:${userId}`).emit("notification:new", {
+          id: n.id,
+          title: n.title,
+          body: n.body,
+        });
+      }),
+    );
+
     res.status(201).json({ statement });
   } catch (e) {
     next(e);
   }
-});
+  },
+);
 
 consensusRouter.post(
   "/:id/statement/:statementId/vote",
+  rateLimit({ windowMs: 10_000, max: 30 }),
   requireAuth,
   async (req: AuthedRequest, res, next) => {
     try {
@@ -125,6 +159,29 @@ consensusRouter.post(
         },
         update: { type: parsed.data.type },
       });
+
+      const voterCount = await prisma.statementVote.count({
+        where: { statementId: statementId.data },
+      });
+      const io = getIo();
+      io?.to(`space:${spaceId.data}`).emit("space:statement_voted", {
+        spaceId: spaceId.data,
+        statementId: statementId.data,
+        voterCount,
+      });
+
+      if (statement.authorId) {
+        const n = await notificationService.create(
+          statement.authorId,
+          "Tu enunciado recibió un voto",
+          "Alguien reaccionó a tu enunciado en un espacio de consenso.",
+        );
+        io?.to(`user:${statement.authorId}`).emit("notification:new", {
+          id: n.id,
+          title: n.title,
+          body: n.body,
+        });
+      }
       res.json({ vote });
     } catch (e) {
       next(e);

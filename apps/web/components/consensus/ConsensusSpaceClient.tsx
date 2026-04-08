@@ -3,9 +3,11 @@
 import { useSession } from "next-auth/react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { apiFetch } from "@/lib/api";
 import { DocumentViewer } from "./DocumentViewer";
+import { getSocket } from "@/lib/socket";
+import type { VoteType } from "@meliora/shared-types";
 
 type Statement = {
   id: string;
@@ -21,6 +23,15 @@ type Space = {
   statements: Statement[];
   document: { id: string; content: unknown; createdAt: string } | null;
 };
+
+const VOTE_OPTIONS: { value: VoteType; label: string }[] = [
+  { value: "AGREE", label: "De acuerdo" },
+  { value: "DISAGREE", label: "En desacuerdo" },
+  { value: "PARTIALLY", label: "Parcialmente" },
+  { value: "RELEVANT", label: "Relevante" },
+  { value: "IRRELEVANT", label: "Irrelevante" },
+  { value: "NEW_TO_ME", label: "Nuevo para mí" },
+];
 
 export function ConsensusSpaceClient({ space }: { space: Space }) {
   const { data: session } = useSession();
@@ -49,6 +60,41 @@ export function ConsensusSpaceClient({ space }: { space: Space }) {
     },
   });
 
+  const voteMutation = useMutation({
+    mutationFn: async (payload: { statementId: string; type: VoteType }) => {
+      if (!session?.accessToken) {
+        throw new Error("Inicia sesión para votar");
+      }
+      return apiFetch(`/api/consensus/${space.id}/statement/${payload.statementId}/vote`, {
+        method: "POST",
+        token: session.accessToken,
+        body: JSON.stringify({ type: payload.type }),
+      });
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["consensus", space.id] });
+      router.refresh();
+    },
+  });
+
+  useEffect(() => {
+    const socket = getSocket(session?.accessToken ?? null);
+    if (!socket) return;
+
+    socket.emit("space:join", space.id);
+    const onStatementVoted = (payload: { spaceId: string }) => {
+      if (payload.spaceId !== space.id) return;
+      void queryClient.invalidateQueries({ queryKey: ["consensus", space.id] });
+      router.refresh();
+    };
+
+    socket.on("space:statement_voted", onStatementVoted);
+    return () => {
+      socket.off("space:statement_voted", onStatementVoted);
+      socket.emit("space:leave", space.id);
+    };
+  }, [queryClient, router, session?.accessToken, space.id]);
+
   return (
     <div className="mt-8 space-y-8">
       {space.document ? (
@@ -71,11 +117,35 @@ export function ConsensusSpaceClient({ space }: { space: Space }) {
               <p className="mt-2 text-xs text-meliora-muted">
                 @{s.author.username} · {s.intent}
               </p>
+              {session?.user?.id && session.user.id !== s.author.id ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {VOTE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      disabled={voteMutation.isPending}
+                      onClick={() => voteMutation.mutate({ statementId: s.id, type: opt.value })}
+                      className="rounded-full border border-meliora-ink/15 px-3 py-1 text-xs font-medium text-meliora-muted hover:border-meliora-accent hover:text-meliora-ink disabled:opacity-50"
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              ) : session?.user?.id === s.author.id ? (
+                <p className="mt-2 text-xs text-meliora-muted">No puedes votar tu propio enunciado.</p>
+              ) : (
+                <p className="mt-2 text-xs text-meliora-muted">Inicia sesión para votar enunciados.</p>
+              )}
             </li>
           ))}
         </ul>
         {space.statements.length === 0 ? (
           <p className="mt-2 text-sm text-meliora-muted">Sin enunciados todavía.</p>
+        ) : null}
+        {voteMutation.isError ? (
+          <p className="mt-3 text-xs text-red-700">
+            {voteMutation.error instanceof Error ? voteMutation.error.message : "Error al votar"}
+          </p>
         ) : null}
       </section>
 
