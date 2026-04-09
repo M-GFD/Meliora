@@ -17,24 +17,28 @@ export default function HomePage() {
       </div>
       <div className="flex flex-wrap gap-4">
         <Link
-          href="/login"
+          href="/feed"
           className="rounded-md bg-meliora-ink px-5 py-2.5 text-sm font-medium text-meliora-paper no-underline hover:bg-meliora-accent"
+        >
+          Explorar plataforma
+        </Link>
+        <Link
+          href="/login"
+          className="rounded-md border border-meliora-ink/15 px-5 py-2.5 text-sm font-medium text-meliora-ink no-underline hover:border-meliora-accent hover:text-meliora-accent"
         >
           Entrar
         </Link>
         <Link
           href="/register"
-          className="rounded-md border border-meliora-ink/15 px-5 py-2.5 text-sm font-medium text-meliora-ink no-underline hover:border-meliora-accent hover:text-meliora-accent"
+          className="rounded-md px-5 py-2.5 text-sm font-medium text-meliora-muted no-underline hover:text-meliora-ink"
         >
           Crear cuenta
         </Link>
-        <Link
-          href="/feed"
-          className="rounded-md px-5 py-2.5 text-sm font-medium text-meliora-muted no-underline hover:text-meliora-ink"
-        >
-          Ver feed
-        </Link>
       </div>
+      <p className="text-sm text-meliora-muted">
+        Puedes ver el feed y la mayoría de vistas sin cuenta; para publicar o votar necesitas iniciar
+        sesión.
+      </p>
     </main>
   );
 }

@@ -28,13 +28,30 @@ export function PlatformShell({ children }: { children: React.ReactNode }) {
                 Perfil
               </Link>
             ) : null}
-            <button
-              type="button"
-              onClick={() => signOut({ callbackUrl: "/" })}
-              className="rounded-md border border-meliora-ink/15 px-2 py-1 text-meliora-ink hover:border-meliora-accent"
-            >
-              Salir
-            </button>
+            {data?.user?.id ? (
+              <button
+                type="button"
+                onClick={() => signOut({ callbackUrl: "/feed" })}
+                className="rounded-md border border-meliora-ink/15 px-2 py-1 text-meliora-ink hover:border-meliora-accent"
+              >
+                Salir
+              </button>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  className="rounded-md border border-meliora-ink/15 px-2 py-1 text-meliora-ink no-underline hover:border-meliora-accent"
+                >
+                  Entrar
+                </Link>
+                <Link
+                  href="/register"
+                  className="rounded-md bg-meliora-ink px-2 py-1 text-meliora-paper no-underline hover:bg-meliora-accent"
+                >
+                  Crear cuenta
+                </Link>
+              </>
+            )}
           </nav>
         </div>
       </header>
