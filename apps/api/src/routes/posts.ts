@@ -36,12 +36,7 @@ postsRouter.get("/feed", async (_req, res, next) => {
       select: { id: true, anchorPostId: true, status: true },
     });
 
-    const byAnchor = new Map(
-      spaces.map((s: { anchorPostId: string; id: string; status: "ACTIVE" | "MATURE" }) => [
-        s.anchorPostId,
-        s,
-      ]),
-    );
+    const byAnchor = new Map(spaces.map((s) => [s.anchorPostId, s]));
     res.json({
       posts: posts.map((post: { id: string }) => ({
         ...post,

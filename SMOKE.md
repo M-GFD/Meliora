@@ -1,7 +1,8 @@
 ## Smoke checklist (Meliora)
 
 ### Servicios
-- **DB**: PostgreSQL accesible por `DATABASE_URL`
+- **Env API**: copia `apps/api/.env.example` → `apps/api/.env` (la API lo carga aunque ejecutes `pnpm` desde la raíz).
+- **DB**: PostgreSQL accesible por `DATABASE_URL`; comprobar con `GET http://localhost:4000/health/db`.
 - **ML**: `ML_SERVICE_URL=http://localhost:8000`
 - **API**: `apps/api` en `http://localhost:4000`
 - **Web**: `apps/web` en `http://localhost:3000`

@@ -1,4 +1,6 @@
-const baseUrl = process.env.ML_SERVICE_URL ?? "http://localhost:8000";
+import { env } from "../bootstrapEnv.js";
+
+const baseUrl = env.ML_SERVICE_URL;
 
 async function postJson<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${baseUrl}${path}`, {

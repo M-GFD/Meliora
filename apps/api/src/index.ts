@@ -1,4 +1,4 @@
-import "dotenv/config";
+import { env } from "./bootstrapEnv.js";
 import http from "node:http";
 import cors from "cors";
 import express from "express";
@@ -20,11 +20,12 @@ import { notificationsRouter } from "./routes/notifications.js";
 import { usersRouter } from "./routes/users.js";
 import { setIo } from "./realtime/io.js";
 import { registerSocketHandlers } from "./sockets/index.js";
+import { prisma } from "./lib/prisma.js";
 
 const app = express();
 const server = http.createServer(app);
 
-const corsOrigin = process.env.CORS_ORIGIN ?? "http://localhost:3000";
+const corsOrigin = env.CORS_ORIGIN;
 
 const io = new Server<
   ClientToServerEvents,
@@ -56,6 +57,15 @@ app.get("/health", (_req, res) => {
   res.json({ ok: true, service: "meliora-api" });
 });
 
+app.get("/health/db", async (_req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ ok: true, service: "meliora-api", database: "up" });
+  } catch {
+    res.status(503).json({ ok: false, service: "meliora-api", database: "down" });
+  }
+});
+
 app.use("/api/auth", authRouter);
 app.use("/api/posts", postsRouter);
 app.use("/api/clusters", clustersRouter);
@@ -67,7 +77,7 @@ app.use(errorHandler);
 
 registerSocketHandlers(io);
 
-const port = Number(process.env.PORT ?? 4000);
+const port = env.PORT;
 server.listen(port, () => {
   console.log(`Meliora API listening on http://localhost:${port}`);
 });

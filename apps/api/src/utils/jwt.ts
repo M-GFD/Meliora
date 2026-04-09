@@ -1,18 +1,12 @@
 import jwt from "jsonwebtoken";
-
-const secret = process.env.JWT_SECRET;
+import { env } from "../bootstrapEnv.js";
 
 export function signToken(payload: { sub: string; username: string }): string {
-  if (!secret) {
-    throw new Error("JWT_SECRET is not set");
-  }
-  return jwt.sign(payload, secret, { expiresIn: "7d" });
+  return jwt.sign(payload, env.JWT_SECRET, { expiresIn: "7d" });
 }
 
 export function verifyToken(token: string): { sub: string; username: string } {
-  if (!secret) {
-    throw new Error("JWT_SECRET is not set");
-  }
+  const secret = env.JWT_SECRET;
   const decoded = jwt.verify(token, secret);
   if (typeof decoded !== "object" || decoded === null) {
     throw new Error("Invalid token payload");
